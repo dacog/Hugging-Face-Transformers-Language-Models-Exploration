@@ -17,6 +17,10 @@ from transformers import (
     pipeline,
     T5ForConditionalGeneration,
 )
+from transformers import BertTokenizer, BertModel
+from transformers import RobertaTokenizer, RobertaModel
+from transformers import GPT2Tokenizer, GPT2Model
+from transformers import BartTokenizer, BartModel
 import transformers
 
 MAX_NEW_TOKENS = 200  # Maximum number of new tokens to generate
@@ -42,7 +46,7 @@ conn.execute(
 
 
 def get_model_size(model_name):
-    cache_dir = transformers.file_utils.default_cache_path
+    cache_dir = "~/.cache/huggingface/transformers" #transformers.file_utils.default_cache_path
     model_dir = os.path.join(cache_dir, model_name)
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(model_dir):
@@ -65,7 +69,7 @@ def measure_performance_and_store(model_func, model_name, input_text, tokenizer,
         mem_end = psutil.virtual_memory().used
         end_time = time.time()
 
-        execution_time = end_time - start_time
+        execution_time = end_time - start_time # in seconds
         cpu_usage = cpu_end - cpu_start
         memory_usage = (mem_end - mem_start) / (1024 * 1024)  # Convert to MB
         model_size = get_model_size(model_name)
@@ -93,9 +97,13 @@ def measure_performance_and_store(model_func, model_name, input_text, tokenizer,
 # List of models to test
 models_to_test = [
     {"name": "google/flan-t5-small", "type": "seq2seq"},
-    #{"name": "google/flan-t5-xxl", "type": "conditional_generation"},
+    {"name": "google/flan-t5-xl", "type": "conditional_generation"},
     {"name": "google/flan-t5-large", "type": "conditional_generation"},
     {"name": "MBZUAI/LaMini-Flan-T5-783M", "type": "text2text-generation"},
+    #{"name": "bert-base-uncased", "type": "bert"},
+    #{"name": "roberta-base", "type": "berta"},
+    #{"name": "gpt2", "type": "gpt2"},
+    #{"name": "facebook/bart-large", "type": "bart"},
     # Add other models here
 ]
 
@@ -125,6 +133,34 @@ if __name__ == "__main__":
             tokenizer = None
             model = pipeline("text2text-generation", model=model_name)
             model_func = lambda text, tok: model(text)[0]["generated_text"]
+        elif model_type == "bert":
+            tokenizer = BertTokenizer.from_pretrained(model_name)
+            model = BertModel.from_pretrained(model_name)
+            model_func = lambda text, tok: tok.decode(
+                model(**tok(text, return_tensors="pt")),
+                skip_special_tokens=True,
+            )
+        elif model_type == "berta":
+            tokenizer = RobertaTokenizer.from_pretrained(model_name)
+            model = RobertaModel.from_pretrained(model_name)
+            model_func = lambda text, tok: tok.decode(
+                model(**tok(text, return_tensors="pt")),
+                skip_special_tokens=True,
+            )
+        elif model_type == "gpt2":
+            tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+            model = GPT2Model.from_pretrained(model_name)
+            model_func = lambda text, tok: tok.decode(
+                model(**tok(text, return_tensors="pt")),
+                skip_special_tokens=True,
+            )
+        elif model_type == "bart":
+            tokenizer = BartTokenizer.from_pretrained(model_name)
+            model = BartModel.from_pretrained(model_name)
+            model_func = lambda text, tok: tok.decode(
+                model(**tok(text, return_tensors="pt")),
+                skip_special_tokens=True,
+            )
 
         measure_performance_and_store(
             model_func, model_name, input_text, tokenizer, conn
