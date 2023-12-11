@@ -1,0 +1,10 @@
+SentencePiece #required by T5Tokenizer
+# required by SentencePiece
+google
+protobuf
+
+#required to measure resource usage
+psutil
+duckdb
+```
+
